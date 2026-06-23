@@ -2,6 +2,9 @@ from dotenv import load_dotenv
 import os
 
 # Add references
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 
 
 
@@ -18,7 +21,7 @@ def main():
 
 
         # Set analysis settings
-        fileUri = "https://github.com/MicrosoftLearning/mslearn-ai-information-extraction/blob/main/Labfiles/prebuilt-doc-intelligence/sample-invoice/sample-invoice.pdf?raw=true"
+        fileUri = "https://github.com/MicrosoftLearning/mslearn-ai-information-extraction/blob/main/Labfiles/03-document-intelligence/prebuilt/sample-invoice/sample-invoice.pdf?raw=true"
         fileLocale = "en-US"
         fileModelId = "prebuilt-invoice"
 
@@ -27,14 +30,38 @@ def main():
 
 
         # Create the client
+        document_analysis_client = DocumentIntelligenceClient(
+            endpoint=endpoint, credential=AzureKeyCredential(key)
+        )
 
 
 
-        # Analyse the invoice
+        # Analyze the invoice
+        poller = document_analysis_client.begin_analyze_document(
+            "prebuilt-invoice",
+            AnalyzeDocumentRequest(url_source=fileUri),
+            locale=fileLocale
+        )
 
 
 
         # Display invoice information to the user
+        result = poller.result()
+
+        for document in result.documents:
+
+            vendor_name = document.fields.get("VendorName")
+            if vendor_name:
+                print(f"\nVendor Name: {vendor_name.get('valueString')}, with confidence {vendor_name.get('confidence')}.")
+
+            customer_name = document.fields.get("CustomerName")
+            if customer_name:
+                print(f"Customer Name: {customer_name.get('valueString')}, with confidence {customer_name.get('confidence')}.")
+
+            invoice_total = document.fields.get("InvoiceTotal")
+            if invoice_total:
+                amount = invoice_total.get("valueCurrency", {})
+                print(f"Invoice Total: {amount.get('currencySymbol', '$')}{amount.get('amount')}, with confidence {invoice_total.get('confidence')}.")
 
 
             
